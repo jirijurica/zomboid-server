@@ -1,0 +1,39 @@
+- name: Configure Project Zomboid server
+  hosts: all
+  become: true
+  tasks:
+    - name: Determine Zomboid environment and region from Terraform config
+      ansible.builtin.set_fact:
+        zomboid_env: >-
+          {%- set repo_root = lookup('ansible.builtin.pipe', 'git rev-parse --show-toplevel') -%}
+          {%- set config_path = (repo_root, 'terraform/config.tf') | path_join -%}
+          {{ lookup('ansible.builtin.file', config_path)
+             | regex_search('env\s*=\s*[\'"]?([^\'"\s]*)', '\1')
+             | first }}
+        zomboid_region: >-
+          {%- set repo_root = lookup('ansible.builtin.pipe', 'git rev-parse --show-toplevel') -%}
+          {%- set config_path = (repo_root, 'terraform/config.tf') | path_join -%}
+          {{ lookup('ansible.builtin.file', config_path)
+             | regex_search('region\s*=\s*[\'"]?([^\'"\s]*)', '\1')
+             | first }}
+
+    - name: Ensure the server has at least 8GB of RAM
+      ansible.builtin.assert:
+        that: (ansible_facts.memtotal_mb / 1024) | round | int >= 8
+        fail_msg: >-
+          This server has only {{ (ansible_facts.memtotal_mb / 1024) }}GB of RAM;
+          Project Zomboid needs at least 8GB.
+
+    # When the playbook is executed repeatedly, we need to prevent that auto shutdown but even the server itself will
+    # not run before it is updated.
+    - ansible.builtin.import_tasks: tasks/stop_zomboid_server.yml
+
+    - ansible.builtin.import_tasks: tasks/steamcmd.yml
+
+    - ansible.builtin.import_tasks: tasks/rcon.yml
+
+    - ansible.builtin.import_tasks: tasks/install_zomboid_server.yml
+
+    - ansible.builtin.import_tasks: tasks/btrfs.yml
+
+    - ansible.builtin.import_tasks: tasks/init_zomboid_server.yml

@@ -1,0 +1,19 @@
+{%- set max_mem = (ansible_facts.memtotal_mb / 1024 * 0.75) | round | int -%}
+{
+    "mainClass": "zombie/network/GameServer",
+    "classpath": [
+        "java/.",
+        "java/projectzomboid.jar"
+    ],
+    "vmArgs": [
+        "-Djava.awt.headless=true",
+        "-Xms{{ max_mem }}g",
+        "-Xmx{{ max_mem }}g",
+        "-Dzomboid.steam=1",
+        "-Dzomboid.znetlog=1",
+        "-Djava.library.path=linux64/",
+        "-Djava.security.egd=file:/dev/urandom",
+        "-XX:+UseZGC",
+        "-XX:-OmitStackTraceInFastThrow"
+    ]
+}

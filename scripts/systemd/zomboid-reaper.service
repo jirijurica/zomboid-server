@@ -1,0 +1,7 @@
+[Unit]
+Description=Shut down idle Project Zomboid server and instance
+After=zomboid-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/zomboid-autoshutdown.sh

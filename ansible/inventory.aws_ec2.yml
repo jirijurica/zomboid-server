@@ -1,0 +1,21 @@
+plugin: amazon.aws.aws_ec2
+# Parsing config options from terraform/config.tf to avoid forcing user to specify AWS details in multiple files again.
+# Inventory plugin does not have access to any path related magic variable, so the file path must be build using
+# external command.
+region: >-
+  {%- set repo_root = lookup('ansible.builtin.pipe', 'git rev-parse --show-toplevel') -%}
+  {%- set config_path = (repo_root, 'terraform/config.tf') | path_join -%}
+  {{ lookup('ansible.builtin.file', config_path)
+     | regex_search('region\s*=\s*[\'"]?([^\'"\s]*)', '\1')
+     | first }}
+filters:
+  tag:Project: zomboid
+  tag:Env: >-
+    {%- set repo_root = lookup('ansible.builtin.pipe', 'git rev-parse --show-toplevel') -%}
+    {%- set config_path = (repo_root, 'terraform/config.tf') | path_join -%}
+    {{ lookup('ansible.builtin.file', config_path)
+       | regex_search('env\s*=\s*[\'"]?([^\'"\s]*)', '\1')
+       | first }}
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"

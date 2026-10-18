@@ -1,0 +1,12 @@
+[Unit]
+Description=Project Zomboid server
+After=network.target
+
+[Service]
+User=pzuser
+WorkingDirectory=/opt/pzserver
+ExecStart=/opt/pzserver/start-server.sh -servername servertest
+ExecStop=/bin/bash -c '/usr/local/bin/zomboid-cli save && /usr/local/bin/zomboid-cli quit'
+
+[Install]
+WantedBy=multi-user.target

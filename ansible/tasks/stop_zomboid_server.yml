@@ -1,0 +1,18 @@
+- name: Check for already installed zomboid systemd units
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ item }}"
+  loop:
+    - zomboid-reaper.timer
+    - zomboid-reaper.service
+    - zomboid-server.service
+  register: zomboid_units
+  changed_when: false
+
+- name: Stop zomboid systemd units before update
+  ansible.builtin.systemd_service:
+    name: "{{ item.item }}"
+    state: stopped
+  loop: "{{ zomboid_units.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists

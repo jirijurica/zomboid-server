@@ -1,0 +1,59 @@
+- name: Prepare server passwords
+  ansible.builtin.set_fact:
+    admin_password: "{{ lookup('amazon.aws.ssm_parameter', '/zomboid/' ~ zomboid_env ~ '/server_admin_password', region=zomboid_region) }}"
+    join_password: "{{ lookup('amazon.aws.ssm_parameter', '/zomboid/' ~ zomboid_env ~ '/server_join_password', region=zomboid_region) }}"
+  no_log: true
+
+# The server has a bug where sending `quit` while it's still generating its
+# first-run config/world kills it mid-initialization.
+- name: Initialize the server on first run
+  ansible.builtin.expect:
+    command: >-
+      bash /opt/pzserver/start-server.sh -servername servertest
+      -adminpassword "{{ admin_password }}"
+    chdir: /opt/pzserver
+    timeout: 600
+    responses:
+      '^.*\*\*\* SERVER STARTED \*\*\*': quit
+    creates: /btrfs/@zomboid/Server/servertest.ini
+  become_user: pzuser
+  no_log: true
+
+- name: Store RCON password in file
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.password', '/dev/null', length=8, chars=['ascii_letters', 'digits']) }}"
+    dest: /home/pzuser/rcon_password
+    owner: pzuser
+    group: pzuser
+    mode: "0600"
+    force: false
+  no_log: true
+
+- name: Read RCON password
+  ansible.builtin.slurp:
+    src: /home/pzuser/rcon_password
+  register: rcon_password_file
+  no_log: true
+
+- name: Set passwords in server config
+  ansible.builtin.lineinfile:
+    path: /btrfs/@zomboid/Server/servertest.ini
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^RCONPassword=', line: "RCONPassword={{ rcon_password_file.content | b64decode | trim }}" }
+    - { regexp: '^Password=', line: "Password={{ join_password }}" }
+  no_log: true
+
+- name: Start and enable zomboid-server service
+  ansible.builtin.systemd_service:
+    name: zomboid-server
+    daemon_reload: true
+    state: started
+    enabled: true
+
+- name: Start and enable zomboid-reaper timer
+  ansible.builtin.systemd_service:
+    name: zomboid-reaper.timer
+    state: started
+    enabled: true

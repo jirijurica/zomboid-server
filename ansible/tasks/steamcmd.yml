@@ -1,0 +1,40 @@
+- name: Check whether the multiverse repository is already enabled
+  ansible.builtin.command: grep -rq multiverse /etc/apt/sources.list /etc/apt/sources.list.d/
+  register: multiverse_check
+  changed_when: false
+  failed_when: false
+
+- name: Enable multiverse repository
+  ansible.builtin.command: add-apt-repository -y multiverse
+  when: multiverse_check.rc != 0
+
+- name: Check whether i386 architecture is already added
+  ansible.builtin.command: dpkg --print-foreign-architectures
+  register: i386_check
+  changed_when: false
+
+- name: Add i386 architecture (steamcmd is a 32-bit package)
+  ansible.builtin.command: dpkg --add-architecture i386
+  when: "'i386' not in i386_check.stdout_lines"
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  when: >-
+    multiverse_check.rc != 0 or
+    'i386' not in i386_check.stdout_lines
+
+# steamcmd's postinst refuses to proceed non-interactively unless this is
+# pre-seeded — without it, `apt install steamcmd` fails outright (its
+# preinst does `test "$RET" = "I AGREE"` under `set -e`).
+- name: Pre-seed steamcmd EULA acceptance
+  ansible.builtin.debconf:
+    name: steamcmd
+    question: steam/question
+    vtype: select
+    value: "I AGREE"
+
+- name: Install steamcmd
+  ansible.builtin.apt:
+    name: steamcmd
+    state: present

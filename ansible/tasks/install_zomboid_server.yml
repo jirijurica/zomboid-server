@@ -1,0 +1,80 @@
+- name: Create pzuser service account
+  ansible.builtin.user:
+    name: pzuser
+    system: true
+    create_home: true
+    shell: /usr/sbin/nologin
+
+- name: Install acl package to allow Ansible run under another unprivileged user
+  ansible.builtin.apt:
+    name: acl
+    state: present
+
+- name: Create /opt/pzserver install directory
+  ansible.builtin.file:
+    path: /opt/pzserver
+    state: directory
+    owner: pzuser
+    group: pzuser
+
+- name: Install/update Project Zomboid dedicated server via steamcmd
+  ansible.builtin.command: /usr/games/steamcmd
+  args:
+    stdin: "{{ lookup('file', 'files/steamcmd_zomboid_install.txt') }}"
+  become_user: pzuser
+  register: steamcmd_result
+  changed_when: true
+  failed_when: >-
+    steamcmd_result.rc != 0 or
+    'Success!' not in steamcmd_result.stdout
+
+- name: Configure Project Zomboid JVM settings
+  ansible.builtin.template:
+    src: templates/ProjectZomboid64.json.j2
+    dest: /opt/pzserver/ProjectZomboid64.json
+    owner: pzuser
+    group: pzuser
+    mode: "0644"
+
+- name: Copy patched server starter script
+  ansible.builtin.copy:
+    src: files/start-server.sh
+    dest: /opt/pzserver/start-server.sh
+    owner: pzuser
+    group: pzuser
+    mode: "0755"
+
+- name: Install zomboid-cli script to /usr/local/sbin
+  ansible.builtin.copy:
+    src: ../scripts/zomboid-cli.sh
+    dest: /usr/local/bin/zomboid-cli
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install zomboid-server systemd unit
+  ansible.builtin.copy:
+    src: ../scripts/systemd/zomboid-server.service
+    dest: /etc/systemd/system/zomboid-server.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install zomboid-autoshutdown script to /opt
+  ansible.builtin.copy:
+    src: ../scripts/zomboid-autoshutdown.sh
+    dest: /opt/zomboid-autoshutdown.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install zomboid-reaper systemd units
+  ansible.builtin.copy:
+    src: "../scripts/systemd/{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - zomboid-reaper.service
+    - zomboid-reaper.timer

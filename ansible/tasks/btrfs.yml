@@ -1,0 +1,30 @@
+- name: Verify /btrfs is mounted
+  ansible.builtin.command: mountpoint -q /btrfs
+  changed_when: false
+
+- name: Create @zomboid btrfs subvolume if it does not exist yet
+  ansible.builtin.command: btrfs subvolume create /btrfs/@zomboid
+  args:
+    creates: /btrfs/@zomboid
+
+- name: Set @zomboid subvolume ownership
+  ansible.builtin.file:
+    path: /btrfs/@zomboid
+    owner: pzuser
+    group: pzuser
+
+- name: Symlink /home/pzuser/Zomboid to /btrfs/@zomboid
+  ansible.builtin.file:
+    src: /btrfs/@zomboid
+    dest: /home/pzuser/Zomboid
+    state: link
+    owner: pzuser
+    group: pzuser
+
+- name: Install zomboid-saves script to /usr/local/bin
+  ansible.builtin.copy:
+    src: ../scripts/zomboid-saves.sh
+    dest: /usr/local/bin/zomboid-saves
+    owner: root
+    group: root
+    mode: "0755"

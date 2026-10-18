@@ -1,0 +1,37 @@
+# https://github.com/gorcon/rcon-cli — resolve the latest release instead of pinning a version.
+- name: Look up latest rcon-cli release
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/gorcon/rcon-cli/releases/latest
+  register: rcon_release
+
+- name: Determine rcon-cli version and asset name
+  ansible.builtin.set_fact:
+    rcon_version: "{{ rcon_release.json.tag_name }}"
+    rcon_version_num: "{{ rcon_release.json.tag_name | regex_replace('^v', '') }}"
+
+- name: Fetch rcon-cli release checksums
+  ansible.builtin.uri:
+    url: "https://github.com/gorcon/rcon-cli/releases/download/{{ rcon_version }}/checksum.txt"
+    return_content: true
+  register: rcon_checksums
+
+- name: Download rcon-cli archive
+  ansible.builtin.get_url:
+    url: "https://github.com/gorcon/rcon-cli/releases/download/{{ rcon_version }}/rcon-{{ rcon_version_num }}-amd64_linux.tar.gz"
+    dest: "/tmp/rcon-{{ rcon_version_num }}-amd64_linux.tar.gz"
+    checksum: >-
+      md5:{{ rcon_checksums.content
+         | regex_search('([0-9a-f]{32})\s+rcon-' ~ rcon_version_num ~ '-amd64_linux\.tar\.gz', '\1')
+         | first }}
+    mode: "0644"
+
+- name: Extract rcon binary to /usr/local/bin
+  ansible.builtin.unarchive:
+    src: "/tmp/rcon-{{ rcon_version_num }}-amd64_linux.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+      - "rcon-{{ rcon_version_num }}-amd64_linux/rcon"
+    creates: /usr/local/bin/rcon
+    mode: "0755"

@@ -9,11 +9,22 @@
     rcon_version: "{{ rcon_release.json.tag_name }}"
     rcon_version_num: "{{ rcon_release.json.tag_name | regex_replace('^v', '') }}"
 
+- name: Check installed rcon-cli version
+  ansible.builtin.command: rcon -v
+  register: rcon_installed
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether rcon-cli needs (re)installing
+  ansible.builtin.set_fact:
+    rcon_needs_install: "{{ rcon_version_num not in (rcon_installed.stdout | default('')) }}"
+
 - name: Fetch rcon-cli release checksums
   ansible.builtin.uri:
     url: "https://github.com/gorcon/rcon-cli/releases/download/{{ rcon_version }}/checksum.txt"
     return_content: true
   register: rcon_checksums
+  when: rcon_needs_install
 
 - name: Download rcon-cli archive
   ansible.builtin.get_url:
@@ -24,6 +35,7 @@
          | regex_search('([0-9a-f]{32})\s+rcon-' ~ rcon_version_num ~ '-amd64_linux\.tar\.gz', '\1')
          | first }}
     mode: "0644"
+  when: rcon_needs_install
 
 - name: Extract rcon binary to /usr/local/bin
   ansible.builtin.unarchive:
@@ -33,5 +45,5 @@
     extra_opts:
       - --strip-components=1
       - "rcon-{{ rcon_version_num }}-amd64_linux/rcon"
-    creates: /usr/local/bin/rcon
     mode: "0755"
+  when: rcon_needs_install

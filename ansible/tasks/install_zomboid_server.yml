@@ -17,7 +17,13 @@
     owner: pzuser
     group: pzuser
 
-- name: Install/update Project Zomboid dedicated server via steamcmd
+- name: Check whether the server is already installed
+  ansible.builtin.find:
+    paths: /opt/pzserver
+    file_type: any
+  register: pzserver_contents
+
+- name: Install Project Zomboid dedicated server via steamcmd
   ansible.builtin.command: /usr/games/steamcmd
   args:
     stdin: "{{ lookup('file', 'files/steamcmd_zomboid_install.txt') }}"
@@ -27,6 +33,7 @@
   failed_when: >-
     steamcmd_result.rc != 0 or
     'Success!' not in steamcmd_result.stdout
+  when: pzserver_contents.matched == 0
 
 - name: Configure Project Zomboid JVM settings
   ansible.builtin.template:

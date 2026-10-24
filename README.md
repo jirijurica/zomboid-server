@@ -102,6 +102,18 @@ These exported credentials are only valid for several minutes, so if Ansible sta
 `Unexpected error while trying to list ec2 regions: An error occurred (RequestExpired) when calling the
 DescribeRegions operation: Request has expired.`, just re-run the command above again.
 
+## Server updates
+
+To update the server, terminate the EC2 instance and recreate it by repeating
+[Provision the infrastructure](#4-provision-the-infrastructure) and [Configure the server](#5-configure-the-server).
+This is the intended workflow, not a fallback - the instance is designed to be fully disposable and safe to terminate at
+any time, while game data lives on its own EBS volume and survives the instance being replaced.
+
+Re-running the Ansible playbook against a live instance won't update the server. The playbook is idempotent and skips
+steps it has already completed, including the server installation itself, so it's only suited to small repairs, such
+as restoring a systemd unit you broke or deleted. For anything larger, replacing the instance is the simpler and more
+reliable path.
+
 ## Backups
 
 The world's save data lives in btrfs subvolume on the dedicated data volume and a new snapshot is created everytime the

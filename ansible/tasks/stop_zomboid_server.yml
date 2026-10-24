@@ -8,7 +8,7 @@
   register: zomboid_units
   changed_when: false
 
-- name: Stop zomboid systemd units before update
+- name: Stop zomboid systemd units
   ansible.builtin.systemd_service:
     name: "{{ item.item }}"
     state: stopped

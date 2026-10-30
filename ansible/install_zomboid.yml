@@ -24,6 +24,8 @@
           This server has only {{ (ansible_facts.memtotal_mb / 1024) }}GB of RAM;
           Project Zomboid needs at least 8GB.
 
+    - ansible.builtin.import_tasks: tasks/system.yml
+
     # When the playbook is executed repeatedly, we need to prevent that auto shutdown but even the server itself.
     - ansible.builtin.import_tasks: tasks/stop_zomboid_server.yml
 

@@ -22,7 +22,7 @@ data "aws_ami" "ubuntu" {
 
 resource "aws_ebs_volume" "data" {
   availability_zone = local.az
-  size              = 10
+  size              = 15
   type              = "gp3"
 
   lifecycle {

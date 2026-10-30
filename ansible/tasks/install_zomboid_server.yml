@@ -5,11 +5,6 @@
     create_home: true
     shell: /usr/sbin/nologin
 
-- name: Install acl package to allow Ansible run under another unprivileged user
-  ansible.builtin.apt:
-    name: acl
-    state: present
-
 - name: Create /opt/pzserver install directory
   ansible.builtin.file:
     path: /opt/pzserver

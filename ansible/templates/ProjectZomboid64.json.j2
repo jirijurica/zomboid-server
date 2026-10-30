@@ -1,4 +1,4 @@
-{%- set max_mem = (ansible_facts.memtotal_mb / 1024 * 0.75) | round | int -%}
+{%- set max_mem = (ansible_facts.memtotal_mb / 1024 * 0.5) | round | int -%}
 {
     "mainClass": "zombie/network/GameServer",
     "classpath": [

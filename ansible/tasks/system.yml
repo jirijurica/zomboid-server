@@ -1,0 +1,11 @@
+- name: Install acl package to allow Ansible run under another unprivileged user
+  ansible.builtin.apt:
+    name: acl
+    state: present
+
+# The agent isn't used here and its background activity can take a significant share of memory.
+- name: Disable the Amazon SSM agent
+  ansible.builtin.systemd_service:
+    name: snap.amazon-ssm-agent.amazon-ssm-agent.service
+    state: stopped
+    enabled: false

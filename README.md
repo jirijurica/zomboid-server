@@ -40,7 +40,7 @@ locals {
   az = "eu-central-1b"  # Availability zone for the instance + data volume
   env = "prod"  # Environment name used in case of multiple deployments
   key_pair_name = "default"  # Name of an existing EC2 key pair in `region`, for SSH access
-  instance_type = "m7i-flex.large"  # EC2 instance size/family — see "Performance / sizing" below
+  instance_type = "m6a.large"  # EC2 instance size/family — see "Instance type sizing" below
 }
 ```
 
@@ -161,72 +161,36 @@ zomboid-saves.sh remove @zomboid-20260910-221500
 It'll ask you to confirm and then delete it for good — there's no undo, so only remove a version once you're sure you're
 done with it.
 
-[//]: # (## Performance / sizing)
+## Instance type sizing
 
-[//]: # ()
-[//]: # (@TODO review and simplification)
+The Project Zomboid dedicated server needs noticeably more resources than one might expect from a game server. It
+isn't a lean, purpose-built server binary; it's much closer to the full game running without graphics. The server
+install alone is around 7GB, and its file layout looks very much like the regular game client's. That's simply where
+the game is today, and it's the reason behind the sizing below.
 
-[//]: # ()
-[//]: # (Project Zomboid's current dedicated server &#40;tested here against **buildid 24909836**, i.e. Build 42&#41; will not even)
+Memory is what matters. From testing on this setup, 8GB of RAM is the minimum. Below that, the server was so
+unstable it couldn't even finish its first boot. Ansible gives the Java heap always the half of the RAM (4GB in this
+case). The Java process uses a fair amount of memory outside the heap as well, so it really needs more than the heap
+size. In a 4-player session lasting 4 hours, it settled at around 5.5GB in total and was stable, leaving the rest for
+the OS. That's workable but tight. Nothing else on the instance should be allowed to grab a large chunk of memory. This
+is also why Ansible disables the Amazon SSM agent, which has been seen consuming CPU and memory mid-game. If cost
+optimization isn't your main goal, a 16GB instance is the comfortable choice. CPU doesn't need any attention. 2 vCPUs
+are completely enough.
 
-[//]: # (initialize with less than **6 GB of RAM**, regardless of player count — this was confirmed by hand on this)
+To change the instance type, edit `instance_type` in `terraform/config.tf` and re-run
+[Provision the infrastructure](#4-provision-the-infrastructure). Here are some suitable options.
 
-[//]: # (infrastructure, and lines up with community reports that Build 42 needs ~6 GB just to start and isn't reliably stable at)
+| Instance type    | Resources       | Approx. cost  | Free tier eligible |
+|------------------|-----------------|---------------|--------------------|
+| `m7i-flex.large` | 2 vCPU / 8 GiB  | $0.11471/hour | Yes                |
+| `m6a.large`      | 2 vCPU / 8 GiB  | $0.1035/hour  | No                 |
+| `r6a.large`      | 2 vCPU / 16 GiB | $0.1368/hour  | No                 |
 
-[//]: # (8 GB once several players are loading new areas simultaneously.)
+The costs are on-demand prices in `eu-central-1` (Frankfurt). They're only there for a rough comparison and will differ
+by region and over time. Check the [AWS EC2 pricing page](https://aws.amazon.com/ec2/pricing/on-demand/) for current
+prices. `m7i-flex.large` lets you run the server free for months under the AWS free tier, which makes it a good way to
+try things out.
 
-[//]: # ()
-[//]: # (`terraform/config.tf` defaults `instance_type` to `m7i-flex.large` &#40;2 vCPU / 8 GiB&#41;, chosen because it's covered under)
-
-[//]: # (AWS's account-level free-tier credit; `m6a.large` &#40;also 2 vCPU / 8 GiB, AMD EPYC instead of Intel Xeon&#41; is noted)
-
-[//]: # (alongside it as the cheaper on-demand option once free-tier credit isn't a factor. Both are `large`-size general-purpose)
-
-[//]: # (instances, sitting right at the edge of what Build 42 needs for a handful of players.)
-
-[//]: # ()
-[//]: # (The table below is a starting-point guide, not a guarantee — actual usage depends heavily on mods &#40;map mods especially&#41;,)
-
-[//]: # (world size explored, and how many concurrent players are actively loading new chunks. It follows the rough community)
-
-[//]: # (rule of thumb of **~6 GB base + ~0.5 GB per additional concurrent player**, mapped onto the nearest `m6a`/`m7i-flex`)
-
-[//]: # (instance size &#40;both families keep a fixed 4:1 GiB-to-vCPU ratio, so sizes scale identically&#41;:)
-
-[//]: # ()
-[//]: # (| Concurrent players       | Estimated RAM need | Instance size      | vCPU / RAM           | EBS data volume         |)
-
-[//]: # (|--------------------------|--------------------|--------------------|----------------------|-------------------------|)
-
-[//]: # (| 1–4 &#40;solo / small group&#41; | ~6–8 GB            | `large`            | 2 vCPU / 8 GiB       | 10 GB &#40;current default&#41; |)
-
-[//]: # (| 5–10                     | ~8.5–11 GB         | `xlarge`           | 4 vCPU / 16 GiB      | 15–20 GB                |)
-
-[//]: # (| 11–16                    | ~11.5–14 GB        | `xlarge`–`2xlarge` | 4–8 vCPU / 16–32 GiB | 25–30 GB                |)
-
-[//]: # (| 17–32 &#40;community server&#41; | ~14.5–22 GB        | `2xlarge`          | 8 vCPU / 32 GiB      | 40 GB+                  |)
-
-[//]: # ()
-[//]: # (Notes:)
-
-[//]: # ()
-[//]: # (- vCPU headroom matters less than RAM for Project Zomboid — the server is largely single-thread bound, so extra cores)
-
-[//]: # (  mostly help with concurrent I/O and mod-heavy world simulation rather than raw throughput. Don't undersize RAM to)
-
-[//]: # (  "afford" more cores.)
-
-[//]: # (- The EBS data volume only needs to hold the save data plus however many btrfs snapshots you keep around &#40;see above&#41; —)
-
-[//]: # (  heavily modded/explored worlds and longer snapshot retention both push this up. `terraform/main.tf` currently)
-
-[//]: # (  provisions 10 GB; bump `aws_ebs_volume.data.size`)
-
-[//]: # (  as needed &#40;it's a live resize — no data loss — but the in-guest filesystem must be grown to match&#41;.)
-
-[//]: # (- To change instance size, edit `instance_type` in `terraform/config.tf` and re-`apply`.)
-
-[//]: # ()
 [//]: # (## Monitoring)
 
 [//]: # ()

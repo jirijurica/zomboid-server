@@ -3,5 +3,5 @@ locals {
   az            = "eu-central-1b"
   env           = "prod"
   key_pair_name = "default"
-  instance_type = "m7i-flex.large"
+  instance_type = "m6a.large"
 }

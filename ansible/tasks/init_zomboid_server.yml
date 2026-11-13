@@ -45,6 +45,15 @@
     - { regexp: '^Password=', line: "Password={{ join_password }}" }
   no_log: true
 
+- name: Disable server initiated backups
+  ansible.builtin.lineinfile:
+    path: /btrfs/@zomboid/Server/servertest.ini
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^BackupsOnStart=', line: "BackupsOnStart=false" }
+    - { regexp: '^BackupsOnVersionChange=', line: "BackupsOnVersionChange=false" }
+
 - name: Start and enable zomboid-server service
   ansible.builtin.systemd_service:
     name: zomboid-server

@@ -36,13 +36,20 @@ Edit `terraform/config.tf` for your deployment:
 
 ```hcl
 locals {
-  region = "eu-central-1"  # AWS region to deploy into
-  az = "eu-central-1b"  # Availability zone for the instance + data volume
-  env = "prod"  # Environment name used in case of multiple deployments
-  key_pair_name = "default"  # Name of an existing EC2 key pair in `region`, for SSH access
-  instance_type = "m6a.large"  # EC2 instance size/family — see "Instance type sizing" below
+  region        = "eu-central-1"     # AWS region to deploy into
+  az            = "eu-central-1b"    # Availability zone for the instance + data volume
+  env           = "prod"             # Environment name used in case of multiple deployments
+  key_pair_name = "default"          # Name of an existing EC2 key pair in `region`, for SSH access
+  instance_type = "m6a.large"        # EC2 instance size/family — see "Instance type sizing" below
+  dns_zone_name = "your-domain.com"  # Existing Route53 hosted zone for the server's DNS record, empty to skip DNS record creation
+  subdomain     = "zomboid"          # Record name
 }
 ```
+
+To give the server a stable hostname, set `dns_zone_name` to a Route53 hosted zone that already exists in the same AWS
+account, for example `example.com`. Terraform doesn't manage the zone itself, it only adds an `A` record pointing to the
+instance's public IP. The public IP changes every time the instance starts, so to have the record always up-to-date, 
+start the instance using `terraform apply` everytime.
 
 ### 2. Configure SSH access for Ansible
 

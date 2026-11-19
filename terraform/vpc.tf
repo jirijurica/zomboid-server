@@ -13,7 +13,6 @@ resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
 }
 
-
 resource "aws_route_table" "public" {
   # Enable obtaining public IPs in subnets. If later a private subnet is needed, use default vpc route table.
   vpc_id = aws_vpc.this.id

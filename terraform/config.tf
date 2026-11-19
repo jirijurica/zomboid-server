@@ -4,4 +4,6 @@ locals {
   env           = "prod"
   key_pair_name = "default"
   instance_type = "m6a.large"
+  dns_zone_name = ""
+  subdomain     = "zomboid"
 }
